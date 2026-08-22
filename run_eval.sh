@@ -15,8 +15,8 @@
 #   --subset FILE       task subset file            (default: tasks/difficulty_ladder.json)
 #   --instances A,B     ad-hoc instance ids (overrides --subset)
 #   --limit N           cap number of tasks
-#   --max-price P       per-task $ cap (else fork default 3.00)
-#   --max-turns N       per-task turn cap (else fork default 100)
+#   --max-price P       per-task $ cap (default: UNCAPPED)
+#   --max-turns N       per-task turn cap (default: UNCAPPED)
 #   --no-grade          skip grading (grading runs by DEFAULT; needs Docker + swebench)
 #   --cache-level LVL   docker image cache: none|base|env|instance (default: instance)
 #                       'instance' keeps the built repo image so reruns skip the git clone

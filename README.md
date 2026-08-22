@@ -94,7 +94,7 @@ builds can't interfere), and the **harness** gets its own. `runs/`, `repo_cache/
 # 1. Pipeline smoke test — mock agent, no vibe/Docker/network-agent calls:
 .venv/bin/python -m harness.run_predictions --fork mock --split lite --limit 5 --run-id smoke
 
-# 2. One real baseline task (small, cost-bounded by max_price in config.py):
+# 2. One real baseline task (uncapped turns/spend; bounded only by timeout_s in config.py):
 .venv/bin/python -m harness.run_predictions --fork baseline --split lite --limit 1 --run-id base_smoke
 #    inspect: runs/base_smoke/predictions.jsonl  and  runs/base_smoke/metrics.jsonl
 
@@ -156,7 +156,7 @@ See details on those tasks: https://huggingface.co/datasets/princeton-nlp/SWE-be
 ## Configuring the forks
 
 Edit `harness/config.py`. Each `ForkConfig` points at an installed `vibe` executable
-(its own venv), safety rails (`max_turns`, `max_price`), and an optional
+(its own venv), the wall-clock guard (`timeout_s`), and an optional
 `index_build_cmd` run (and timed) once per repo before the agent starts.
 
 ### Backends (how the agent is invoked)
@@ -178,9 +178,16 @@ the token/cost read-back validates on the first real run and **degrades graceful
 if extraction ever fails, the patch still comes from `git diff` and cost shows `None`.
 
 ### Cost & turn caps (per run)
-`--max-price` and `--max-turns` override the fork defaults (`max_price=1.00`,
-`max_turns=40` in `config.py`) for a single run, e.g. `--max-price 0.50`. Lower =
-safer spend, but too low truncates hard "buried" tasks before they finish.
+**Both caps are off by default** (`max_turns=None`, `max_price=None` in `config.py`):
+a binding cap censors the signal the A/B is trying to measure — at `max_turns=40`
+every ladder task stopped at the cap, so their empty patches measured the cap, not
+the agent. Each task now runs to its own termination, guarded only by `timeout_s`
+(1800s), which also catches the wedged-agent case a price cap never could.
+
+The trade-off is that per-task spend is unbounded by the harness. Cost is ~99% input
+tokens (history resent each turn), so it grows roughly quadratically in turns:
+~$0.28/task at 40 turns, ~$1.8 at 100, ~$4 at 150. Pass `--max-price P` /
+`--max-turns N` to reimpose a ceiling for a single run, e.g. `--max-price 0.50`.
 
 ## Status
 

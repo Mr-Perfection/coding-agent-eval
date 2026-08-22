@@ -37,24 +37,24 @@ class ForkConfig:
     # Placeholders: {repo} = repo path, {vibe} = vibe_bin. None = no index step.
     index_build_cmd: str | None = None
     # Turn / spend caps for headless runs (overridable per run via CLI flags).
-    # None = uncapped: vibe only installs TurnLimitMiddleware / PriceLimitMiddleware
-    # when the value is not None (core/agent_loop/_loop.py).
+    # Both default to None = UNCAPPED: vibe only installs TurnLimitMiddleware /
+    # PriceLimitMiddleware when the value is not None (core/agent_loop/_loop.py).
     #
-    # These are sized to NOT bind on a healthy run — they are runaway guards, not
-    # budget knobs. A binding cap censors the very signal an indexing A/B measures:
-    # at max_turns=40 all 3 ladder tasks stopped at the cap, one of them (12589)
+    # Any binding cap censors the very signal an indexing A/B measures: at
+    # max_turns=40 all 3 ladder tasks stopped at the cap, one of them (12589)
     # having made 22 reads and zero edits, so its "empty patch" measured the cap
-    # rather than the agent. Re-derive these from a calibration run rather than
-    # trusting them blindly; see README.
+    # rather than the agent. Raising the cap only moves that boundary, so the
+    # agent now runs to its own termination and `timeout_s` is the sole guard.
     #
-    # Cost is ~99% input tokens (history resent every turn), so spend grows roughly
-    # QUADRATICALLY in turns: ~$0.28/task at 40 turns, ~$1.8 at 100, ~$4 at 150.
-    # 100 is ~2.5x the point where every ladder task was still mid-exploration,
-    # while keeping the 3-task ladder near $5/arm.
-    max_turns: int | None = 100
-    max_price: float | None = 3.00
-    # Wall-clock guard on the agent subprocess, in seconds. This is the real
-    # backstop: a wedged agent burns no tokens, so max_price never fires on it.
+    # Consequence: spend per task is unbounded by the harness. Cost is ~99% input
+    # tokens (history resent every turn), so it grows roughly QUADRATICALLY in
+    # turns: ~$0.28/task at 40 turns, ~$1.8 at 100, ~$4 at 150. Pass --max-price /
+    # --max-turns per run if a particular sweep needs a ceiling.
+    max_turns: int | None = None
+    max_price: float | None = None
+    # Wall-clock guard on the agent subprocess, in seconds. With the turn/price
+    # caps off this is the ONLY backstop — and the right one, since a wedged agent
+    # burns no tokens and would never trip max_price anyway.
     # On timeout the child is killed and we still harvest the repo's git diff,
     # so partial edits survive as a patch. None = no timeout (not recommended).
     timeout_s: int | None = 1800
