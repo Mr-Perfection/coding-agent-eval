@@ -86,7 +86,7 @@ def aggregate(records: Iterable[dict]) -> dict:
         # Efficiency
         "mean_turns": _safe_mean([r.get("turns") for r in recs]),
         "mean_search_calls": _safe_mean([r.get("search_calls") for r in recs]),
-        # Time (agent only; index build reported separately)
+        # Time (agent subprocess; passive index builds fold into wall-clock — see AgentRun)
         "mean_wall_clock_s": _safe_mean([r.get("wall_clock_s") for r in recs]),
         "mean_index_build_s": _safe_mean([r.get("index_build_s") for r in recs]),
         # Cost

@@ -24,8 +24,13 @@ from .metrics import SEARCH_TOOLS
 @dataclass
 class AgentRun:
     patch: str                          # unified diff = the model_patch
-    wall_clock_s: float                 # agent time ONLY (excludes index build)
-    index_build_s: float = 0.0          # one-time per repo; 0 if none
+    # Agent-subprocess time. Excludes the index build ONLY when the fork builds it
+    # out-of-band via index_build_cmd (baseline: no index; a fork with an explicit
+    # build step: timed into index_build_s). The ultra-index fork indexes PASSIVELY
+    # inside the agent session, so its one-time-per-repo build folds INTO this
+    # number and index_build_s stays 0 — see config.py "ultra-index".
+    wall_clock_s: float
+    index_build_s: float = 0.0          # out-of-band build only; 0 for passive/none
     turns: int | None = None
     tool_calls: dict[str, int] = field(default_factory=dict)
     tokens: dict[str, int] = field(default_factory=dict)
@@ -73,8 +78,10 @@ _ADAPTER = str(Path(__file__).with_name("_vibe_inproc.py"))
 
 
 def _build_index(fork: ForkConfig, repo_path: Path) -> float:
-    """Run + time the per-repo index build. Timed separately so it never inflates
-    per-task wall-clock. Returns seconds (0.0 if the fork has no index step)."""
+    """Run + time an OUT-OF-BAND per-repo index build, kept out of wall-clock.
+    Returns 0.0 when the fork has no index_build_cmd — which includes the
+    ultra-index fork, whose index builds passively inside the agent run instead
+    (that build time therefore lands in wall_clock_s; see AgentRun)."""
     if not fork.index_build_cmd:
         return 0.0
     vibe_abs = str(Path(fork.vibe_bin).absolute()) if fork.vibe_bin else ""

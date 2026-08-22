@@ -108,7 +108,8 @@ def main() -> None:
         print(f"{label:<{w}} {_fmt(bv, spec):>14} {_fmt(cv, spec):>14}"
               f"{_delta(bv, cv, higher)}")
     print(f"\nn: baseline={b['n']}  candidate={c['n']}")
-    print("(index build time is reported separately and NOT added to wall-clock)")
+    print("(index build: separate row for OUT-OF-BAND builds; the ultra-index fork "
+          "indexes passively, so its build folds INTO wall-clock — see AgentRun)")
 
 
 if __name__ == "__main__":

@@ -242,7 +242,8 @@ def render_ab(base_id: str, cand_id: str) -> str:
              '<th>Δ (cand−base)</th></tr></thead><tbody>'
              + "".join(trs) + "</tbody></table></div>")
     note = ('<div class="legend">Green Δ = candidate better (index helps); red = worse. '
-            'Index build time is reported on its own row and is NOT added to wall-clock.</div>')
+            'The index-build row covers out-of-band builds only; the ultra-index fork '
+            'indexes passively, so its one-time-per-repo build folds into wall-clock.</div>')
     body = (f"<h1>A/B — <span class='mono'>{html.escape(base_id)}</span> vs "
             f"<span class='mono'>{html.escape(cand_id)}</span></h1>"
             f'<div class="sub">baseline vs candidate · {datetime.now():%Y-%m-%d %H:%M}</div>'

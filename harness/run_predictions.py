@@ -13,8 +13,9 @@ metrics.jsonl record schema::
       "instance_id": str,
       "fork": str,
       "resolved": null,          # filled in by compare/grade join
-      "wall_clock_s": float,     # agent time only (excludes index build)
-      "index_build_s": float,    # one-time per repo (0 if none)
+      "wall_clock_s": float,     # agent subprocess time; for the ultra-index fork
+                                 # this INCLUDES the passive index build (see AgentRun)
+      "index_build_s": float,    # out-of-band build only (0 for passive/none)
       "turns": int | null,
       "tool_calls": {name: count},
       "search_calls": int,       # grep/read/glob... -> "flailing" proxy
