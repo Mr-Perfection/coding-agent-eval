@@ -30,11 +30,32 @@ class AgentRun:
     tool_calls: dict[str, int] = field(default_factory=dict)
     tokens: dict[str, int] = field(default_factory=dict)
     cost_usd: float | None = None
+    timed_out: bool = False             # agent hit fork.timeout_s and was killed
     raw: dict | None = None             # raw transcript, kept for debugging
 
     @property
     def search_calls(self) -> int:
         return sum(v for k, v in self.tool_calls.items() if k in SEARCH_TOOLS)
+
+
+def _run_with_timeout(cmd: list[str], cwd: Path, timeout_s: int | None,
+                      label: str) -> tuple[str, str, bool]:
+    """Run `cmd`, returning (stdout, stderr, timed_out).
+
+    A timeout is not an error here: the agent may have already edited files, and
+    the patch comes from the repo's git diff rather than from stdout. So we kill
+    the child, report it, and let the caller harvest whatever landed on disk.
+    """
+    try:
+        proc = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True,
+                              timeout=timeout_s)
+        return proc.stdout, proc.stderr, False
+    except subprocess.TimeoutExpired as e:
+        def _dec(b):  # capture_output=True gives bytes on the exception path
+            return b.decode(errors="replace") if isinstance(b, bytes) else (b or "")
+        print(f"    [{label}] TIMEOUT after {timeout_s}s — killed; "
+              f"keeping partial git diff")
+        return _dec(e.stdout), _dec(e.stderr), True
 
 
 def run_agent(fork: ForkConfig, instance: dict, repo_path: Path,
@@ -60,14 +81,14 @@ def _build_index(fork: ForkConfig, repo_path: Path) -> float:
     cmd = fork.index_build_cmd.format(repo=str(repo_path), vibe=vibe_abs)
     t0 = time.perf_counter()
     subprocess.run(cmd, shell=True, cwd=repo_path, check=True,
-                   capture_output=True, text=True)
+                   capture_output=True, text=True, timeout=fork.timeout_s)
     return round(time.perf_counter() - t0, 3)
 
 
 # ------------------------------------------------------------------------ inproc
 
 def _run_inproc(fork: ForkConfig, instance: dict, repo_path: Path,
-                max_turns: int, max_price: float) -> AgentRun:
+                max_turns: int | None, max_price: float | None) -> AgentRun:
     """Preferred backend: run the agent via harness/_vibe_inproc.py with the fork's
     python, capturing token usage + cost (not available from the plain CLI)."""
     py = fork.resolved_vibe_python()
@@ -89,17 +110,22 @@ def _run_inproc(fork: ForkConfig, instance: dict, repo_path: Path,
     with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as f:
         f.write(instance["problem_statement"])
         prompt_file = f.name
-    cmd = [py, _ADAPTER, "--prompt-file", prompt_file, "--workdir", str(repo_path),
-           "--max-turns", str(max_turns), "--max-price", str(max_price)]
+    cmd = [py, _ADAPTER, "--prompt-file", prompt_file, "--workdir", str(repo_path)]
+    # Omit entirely when None: the adapter's own default is None (uncapped).
+    if max_turns is not None:
+        cmd += ["--max-turns", str(max_turns)]
+    if max_price is not None:
+        cmd += ["--max-price", str(max_price)]
     t0 = time.perf_counter()
-    proc = subprocess.run(cmd, cwd=repo_path, capture_output=True, text=True)
+    stdout, stderr, timed_out = _run_with_timeout(
+        cmd, repo_path, fork.timeout_s, f"inproc:{instance['instance_id']}")
     wall_clock_s = round(time.perf_counter() - t0, 3)
     Path(prompt_file).unlink(missing_ok=True)
 
-    parsed = _parse_vibe_json(proc.stdout)
+    parsed = _parse_vibe_json(stdout)
     blob = parsed.get("raw") if isinstance(parsed.get("raw"), dict) else {}
-    if proc.stderr.strip():
-        print(f"    [inproc:{instance['instance_id']}] {proc.stderr.strip()[:300]}")
+    if stderr.strip():
+        print(f"    [inproc:{instance['instance_id']}] {stderr.strip()[:300]}")
 
     # Prefer vibe's own step count (agent iterations) over assistant-message count,
     # which undercounts badly (many tool calls land under one assistant message).
@@ -112,6 +138,7 @@ def _run_inproc(fork: ForkConfig, instance: dict, repo_path: Path,
         tool_calls=parsed.get("tool_calls", {}),
         tokens=blob.get("usage") or {},
         cost_usd=blob.get("cost_usd"),
+        timed_out=timed_out,
         raw=parsed.get("raw"),
     )
 
@@ -119,7 +146,7 @@ def _run_inproc(fork: ForkConfig, instance: dict, repo_path: Path,
 # --------------------------------------------------------------------------- CLI
 
 def _run_cli(fork: ForkConfig, instance: dict, repo_path: Path,
-             max_turns: int, max_price: float) -> AgentRun:
+             max_turns: int | None, max_price: float | None) -> AgentRun:
     """Raw `vibe` binary backend. History only — no token/cost (see _run_inproc)."""
     if not fork.vibe_bin or not Path(fork.vibe_bin).exists():
         raise SystemExit(
@@ -140,15 +167,16 @@ def _run_cli(fork: ForkConfig, instance: dict, repo_path: Path,
         "--trust",
         "--workdir", str(repo_path),
         "--output", "json",
-        "--max-turns", str(max_turns),
-        "--max-price", str(max_price),
+        *(["--max-turns", str(max_turns)] if max_turns is not None else []),
+        *(["--max-price", str(max_price)] if max_price is not None else []),
         *fork.extra_args,
     ]
     t0 = time.perf_counter()
-    proc = subprocess.run(cmd, cwd=repo_path, capture_output=True, text=True)
+    stdout, _stderr, timed_out = _run_with_timeout(
+        cmd, repo_path, fork.timeout_s, f"cli:{instance['instance_id']}")
     wall_clock_s = time.perf_counter() - t0
 
-    parsed = _parse_vibe_json(proc.stdout)
+    parsed = _parse_vibe_json(stdout)
     return AgentRun(
         patch=repos.diff(repo_path),
         wall_clock_s=round(wall_clock_s, 3),
@@ -157,6 +185,7 @@ def _run_cli(fork: ForkConfig, instance: dict, repo_path: Path,
         tool_calls=parsed.get("tool_calls", {}),
         tokens=parsed.get("tokens", {}),
         cost_usd=parsed.get("cost_usd"),
+        timed_out=timed_out,
         raw=parsed.get("raw"),
     )
 

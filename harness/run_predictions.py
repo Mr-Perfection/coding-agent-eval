@@ -103,9 +103,9 @@ def main() -> None:
     ap.add_argument("--instances-file", default=None,
                     help="path to a subset file: tasks/*.json or a newline id list")
     ap.add_argument("--max-turns", type=int, default=None,
-                    help="override per-task turn cap (else fork default)")
+                    help="per-task turn cap (else fork default, currently 100)")
     ap.add_argument("--max-price", type=float, default=None,
-                    help="override per-task $ cap (else fork default, currently 1.00)")
+                    help="per-task $ cap (else fork default, currently 3.00)")
     ap.add_argument("--run-id", required=True)
     args = ap.parse_args()
 
@@ -156,6 +156,7 @@ def main() -> None:
             "search_calls": run.search_calls if run else None,
             "tokens": run.tokens if run else {},
             "cost_usd": run.cost_usd if run else None,
+            "timed_out": run.timed_out if run else None,
             "patch_nonempty": bool(patch.strip()),
             "localization": localization(inst.get("patch", ""), patch),
         }
