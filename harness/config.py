@@ -83,12 +83,15 @@ FORKS: dict[str, ForkConfig] = {
         index_build_cmd=None,
     ),
 
-    # Ultra-index vibe: same model, plus an index build step per repo.
-    # Adjust index_build_cmd to whatever the fork exposes (e.g. `vibe index build`).
+    # Ultra-index vibe: same model. This fork's index is PASSIVE — built lazily on
+    # session start (service.ensure_ready(); a barrier blocks the agent's first tool
+    # use until the repo map is ready), so there is no explicit build command. The
+    # build cost therefore lands inside per-task wall-clock rather than on its own
+    # line. (branch: codex/passive-repository-index)
     "ultra-index": ForkConfig(
         name="ultra-index",
         vibe_bin="venvs/ultra-index/bin/vibe",
-        index_build_cmd="{vibe} index build",
+        index_build_cmd=None,
     ),
 }
 
