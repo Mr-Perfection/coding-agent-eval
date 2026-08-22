@@ -1,7 +1,7 @@
 {
   "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"ls -la && echo \\\"---GIT LOG---\\\" && git log --oneline -20 2>/dev/null && echo \\\"---REMOTE---\\\" && git remote -v\",\"description\":\"Inspect local repo contents and git state\"}",
-  "error": "Exit code 128\n---GIT LOG---",
-  "timestamp": "2026-08-22T18:27:39.101Z",
+  "tool_input_preview": "{\"command\":\"echo \\\"=== top-level report ===\\\"; ls -1 vibe-baseline.base_limit1.json 2>/dev/null && cat vibe-baseline.base_limit1.json; echo; echo \\\"=== per-instance report ===\\\"; cat logs/run_evaluati...",
+  "error": "Exit code 1\n=== top-level report ===\n\n=== per-instance report ===",
+  "timestamp": "2026-08-22T20:11:35.147Z",
   "retry_count": 1
 }

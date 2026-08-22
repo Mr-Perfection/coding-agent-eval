@@ -31,15 +31,81 @@
   "directoryMap": {},
   "hotPaths": [
     {
-      "path": "harness/config.py",
-      "accessCount": 3,
-      "lastAccessed": 1787423716200,
+      "path": "harness/vibe_agent.py",
+      "accessCount": 16,
+      "lastAccessed": 1787428260302,
+      "type": "file"
+    },
+    {
+      "path": "run_eval.sh",
+      "accessCount": 11,
+      "lastAccessed": 1787429625282,
       "type": "file"
     },
     {
       "path": "README.md",
-      "accessCount": 1,
-      "lastAccessed": 1787423607661,
+      "accessCount": 8,
+      "lastAccessed": 1787429451663,
+      "type": "file"
+    },
+    {
+      "path": "harness/config.py",
+      "accessCount": 7,
+      "lastAccessed": 1787426241356,
+      "type": "file"
+    },
+    {
+      "path": "harness/run_predictions.py",
+      "accessCount": 7,
+      "lastAccessed": 1787426303390,
+      "type": "file"
+    },
+    {
+      "path": "tests/test_smoke.py",
+      "accessCount": 7,
+      "lastAccessed": 1787428582129,
+      "type": "file"
+    },
+    {
+      "path": "harness/_vibe_inproc.py",
+      "accessCount": 4,
+      "lastAccessed": 1787428245779,
+      "type": "file"
+    },
+    {
+      "path": "harness/grade.py",
+      "accessCount": 4,
+      "lastAccessed": 1787429580243,
+      "type": "file"
+    },
+    {
+      "path": "harness/metrics.py",
+      "accessCount": 2,
+      "lastAccessed": 1787424281710,
+      "type": "file"
+    },
+    {
+      "path": "tasks/indexing_subset.json",
+      "accessCount": 2,
+      "lastAccessed": 1787425200975,
+      "type": "file"
+    },
+    {
+      "path": "harness/repos.py",
+      "accessCount": 2,
+      "lastAccessed": 1787427504804,
+      "type": "file"
+    },
+    {
+      "path": "harness/report.py",
+      "accessCount": 2,
+      "lastAccessed": 1787428974943,
+      "type": "file"
+    },
+    {
+      "path": "harness/compare.py",
+      "accessCount": 2,
+      "lastAccessed": 1787429601644,
       "type": "file"
     },
     {
@@ -52,48 +118,6 @@
       "path": "harness/__init__.py",
       "accessCount": 1,
       "lastAccessed": 1787423615501,
-      "type": "file"
-    },
-    {
-      "path": "harness/repos.py",
-      "accessCount": 1,
-      "lastAccessed": 1787423638499,
-      "type": "file"
-    },
-    {
-      "path": "harness/metrics.py",
-      "accessCount": 1,
-      "lastAccessed": 1787423666462,
-      "type": "file"
-    },
-    {
-      "path": "harness/vibe_agent.py",
-      "accessCount": 1,
-      "lastAccessed": 1787423708126,
-      "type": "file"
-    },
-    {
-      "path": "harness/run_predictions.py",
-      "accessCount": 1,
-      "lastAccessed": 1787423748661,
-      "type": "file"
-    },
-    {
-      "path": "harness/grade.py",
-      "accessCount": 1,
-      "lastAccessed": 1787423756435,
-      "type": "file"
-    },
-    {
-      "path": "harness/compare.py",
-      "accessCount": 1,
-      "lastAccessed": 1787423784289,
-      "type": "file"
-    },
-    {
-      "path": "tests/test_smoke.py",
-      "accessCount": 1,
-      "lastAccessed": 1787423809062,
       "type": "file"
     }
   ],

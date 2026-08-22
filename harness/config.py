@@ -11,8 +11,12 @@ whole pipeline can be exercised before any real fork is installed.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 
-# Pin BOTH real forks to the same model. Change in one place only.
+# Pin BOTH real forks to the same model so deltas reflect the index, not the model.
+# vibe has NO --model CLI flag: pin it in ~/.vibe/config.toml via `active_model`
+# (must match a key under [models]). This constant is recorded in metrics for
+# traceability but is not passed on the command line.
 PINNED_MODEL = "mistral-medium-3.5"
 
 
@@ -21,25 +25,39 @@ class ForkConfig:
     name: str
     # Path to the fork's `vibe` executable (typically inside its own venv).
     vibe_bin: str | None = None
+    # Path to the fork's python (same venv). Used by the "inproc" backend to run
+    # harness/_vibe_inproc.py, which captures token usage + cost. Defaults next to
+    # vibe_bin (…/bin/vibe -> …/bin/python) when left None.
+    vibe_python: str | None = None
     model: str = PINNED_MODEL
-    # Extra CLI args appended to every headless invocation.
+    # Extra CLI args appended to every headless invocation ("cli" backend only).
     extra_args: tuple[str, ...] = ()
     # Optional shell command, run + timed once per repo before the agent starts,
     # to build/refresh the index. Runs with cwd = the checked-out repo.
     # Placeholders: {repo} = repo path, {vibe} = vibe_bin. None = no index step.
     index_build_cmd: str | None = None
-    # Safety rails for headless runs.
+    # Safety rails for headless runs (overridable per run via CLI flags).
     max_turns: int = 40
-    max_price: float = 2.00
-    # Backend: "cli" runs the real executable; "mock" runs the synthetic agent.
-    backend: str = "cli"
+    max_price: float = 1.00
+    # Backend: "inproc" runs _vibe_inproc.py (history + tokens + cost),
+    # "cli" runs the raw `vibe` binary (history only, no cost),
+    # "mock" runs the synthetic agent (no vibe needed).
+    backend: str = "inproc"
+
+    def resolved_vibe_python(self) -> str | None:
+        if self.vibe_python:
+            return self.vibe_python
+        if self.vibe_bin:
+            p = Path(self.vibe_bin).with_name("python")
+            return str(p)
+        return None
 
 
 FORKS: dict[str, ForkConfig] = {
     # Synthetic agent — no vibe required. Validates the pipeline end-to-end.
     "mock": ForkConfig(name="mock", backend="mock", model="mock-model"),
 
-    # Baseline vibe: no indexing. Point vibe_bin at the installed executable.
+    # Baseline vibe: no indexing.
     "baseline": ForkConfig(
         name="baseline",
         vibe_bin="venvs/baseline/bin/vibe",

@@ -10,9 +10,14 @@ import re
 from statistics import mean
 from typing import Iterable
 
-# Tool names that indicate the agent is *searching* for the right code rather than
-# editing it. Indexing should shrink these. Adjust to match vibe's tool names.
-SEARCH_TOOLS = {"grep", "read", "glob", "ls", "find", "search", "cat"}
+# Effect kinds / tool names that mean the agent is *searching* for the right code
+# rather than editing it. This is the signal indexing should shrink most.
+# vibe emits effect `detail.kind` values (file_search = grep-like, file_read = open
+# a file to look). The rest are legacy/mock aliases kept so both vocabularies count.
+SEARCH_TOOLS = {
+    "file_search", "file_read",          # real vibe effect kinds
+    "grep", "read", "glob", "search", "ls", "find", "cat",  # aliases / mock
+}
 
 _DIFF_GIT = re.compile(r"^diff --git a/(.+?) b/(.+?)$", re.MULTILINE)
 _PLUSPLUS = re.compile(r"^\+\+\+ b/(.+?)(?:\t.*)?$", re.MULTILINE)

@@ -1,0 +1,19 @@
+{
+  "name": "indexing-hackathon-v1",
+  "split": "lite",
+  "rationale": "SWE-bench Lite gold patches are all single-file, so the indexing signal here is 'locate the ONE correct file among thousands', not multi-file editing. We pick from the largest repos (django 114, sympy 77, matplotlib, scikit-learn) where a semantic index beats grep, and split by how hard the target is to localize. 'good-at/bad-at' labels are HEURISTIC until confirmed by a baseline run (see README). https://huggingface.co/datasets/princeton-nlp/SWE-bench_Lite/viewer/default/test",
+  "buckets": {
+    "localized": "Small, specific issue; target file relatively findable. Index likely trims search turns; resolution probably already high. ~ 'vibe good-at'.",
+    "buried": "Deep/obscure target file and/or long vague issue. Index should help most (resolution + localization + fewer search turns). ~ 'vibe bad-at'."
+  },
+  "tasks": [
+    {"instance_id": "django__django-12113",            "repo": "django/django",              "bucket": "localized", "target_file": "django/db/backends/sqlite3/creation.py", "why": "10-line fix, single test, specific issue."},
+    {"instance_id": "django__django-13447",            "repo": "django/django",              "bucket": "localized", "target_file": "django/contrib/admin/sites.py",           "why": "11-line fix, admin app is well-known territory."},
+    {"instance_id": "matplotlib__matplotlib-23563",    "repo": "matplotlib/matplotlib",      "bucket": "localized", "target_file": "lib/mpl_toolkits/mplot3d/art3d.py",       "why": "11-line fix in the 3D toolkit; traceback points at the class -> findable."},
+    {"instance_id": "matplotlib__matplotlib-25433",    "repo": "matplotlib/matplotlib",      "bucket": "localized", "target_file": "lib/matplotlib/figure.py",                "why": "11-line fix in core figure.py, a well-known central file."},
+    {"instance_id": "django__django-14672",            "repo": "django/django",              "bucket": "buried",    "target_file": "django/db/models/fields/reverse_related.py", "why": "Deep ORM internals, 168 failing tests, 6.7k-char issue -> hard to find the file."},
+    {"instance_id": "django__django-13265",            "repo": "django/django",              "bucket": "buried",    "target_file": "django/db/migrations/autodetector.py",    "why": "Migration autodetector internals; ordering bug buried in a large module."},
+    {"instance_id": "sympy__sympy-20049",              "repo": "sympy/sympy",                "bucket": "buried",    "target_file": "sympy/physics/vector/point.py",           "why": "Domain-specific physics.vector module; vague issue, target far from obvious."},
+    {"instance_id": "scikit-learn__scikit-learn-25638","repo": "scikit-learn/scikit-learn",  "bucket": "buried",    "target_file": "sklearn/utils/multiclass.py",             "why": "Fix lives in a utils helper, not where the user-facing error surfaces."}
+  ]
+}

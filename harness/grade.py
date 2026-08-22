@@ -25,6 +25,12 @@ def main() -> None:
     ap.add_argument("--split", default="lite", choices=SPLITS)
     ap.add_argument("--dataset", default=None)
     ap.add_argument("--max-workers", type=int, default=4)
+    # Default "" (→ None in swebench) builds the eval images locally from source.
+    # The swebench default ("swebench") pulls prebuilt images from Docker Hub, which
+    # are only published for x86_64 — on Apple Silicon (arm64) that 404s. Local build
+    # works on any arch and is cached after the first run. Pass --namespace swebench
+    # to pull instead (faster on x86_64 if the images exist).
+    ap.add_argument("--namespace", default="")
     args = ap.parse_args()
 
     preds = Path("runs") / args.run_id / "predictions.jsonl"
@@ -37,6 +43,7 @@ def main() -> None:
         "--predictions_path", str(preds),
         "--max_workers", str(args.max_workers),
         "--run_id", args.run_id,
+        "--namespace", args.namespace,
     ]
     print("Grading (Docker):", " ".join(cmd))
     subprocess.run(cmd, check=True)

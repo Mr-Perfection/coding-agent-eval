@@ -11,7 +11,9 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-CACHE_DIR = Path("repo_cache")
+# Absolute so paths stay valid when subprocesses run with cwd=<repo> (the agent
+# is launched inside the checked-out repo, where a relative path would break).
+CACHE_DIR = Path("repo_cache").resolve()
 
 
 def _run(cmd: list[str], cwd: Path | None = None) -> None:

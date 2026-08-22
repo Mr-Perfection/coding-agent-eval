@@ -43,12 +43,52 @@ SPLITS = {
 }
 
 
-def load_instances(split: str, dataset: str | None, limit: int | None) -> list[dict]:
+def read_instance_ids(path: str) -> list[str]:
+    """Read a curated subset file. Accepts either:
+
+    * a ``tasks/*.json`` with a top-level ``tasks`` list of objects carrying
+      ``instance_id`` (our curated format), or a bare JSON list of ids/objects, or
+    * a plain text file with one id per line (``#`` comments and blanks ignored).
+
+    Order is preserved (defines run order); duplicates are dropped.
+    """
+    text = Path(path).read_text()
+    ids: list[str] = []
+    if path.endswith(".json"):
+        data = json.loads(text)
+        items = data.get("tasks", data) if isinstance(data, dict) else data
+        for it in items:
+            ids.append(it if isinstance(it, str) else (
+                it.get("instance_id") or it.get("id")))
+    else:
+        for line in text.splitlines():
+            line = line.split("#", 1)[0].strip()
+            if line:
+                ids.append(line)
+    seen: set[str] = set()
+    return [i for i in ids if i and not (i in seen or seen.add(i))]
+
+
+def load_instances(
+    split: str,
+    dataset: str | None,
+    limit: int | None,
+    only_ids: list[str] | None = None,
+) -> list[dict]:
     from datasets import load_dataset  # imported lazily so --help needs no deps
 
     name = dataset or SPLITS[split]
     ds = load_dataset(name, split="test")
     rows = [dict(r) for r in ds]
+
+    if only_ids:
+        by_id = {r["instance_id"]: r for r in rows}
+        missing = [i for i in only_ids if i not in by_id]
+        if missing:
+            raise SystemExit(
+                f"{len(missing)} instance id(s) not in {name}: {', '.join(missing)}"
+            )
+        rows = [by_id[i] for i in only_ids]  # preserve curated order
     return rows[:limit] if limit else rows
 
 
@@ -58,8 +98,23 @@ def main() -> None:
     ap.add_argument("--split", default="lite", choices=SPLITS)
     ap.add_argument("--dataset", default=None, help="override HF dataset name")
     ap.add_argument("--limit", type=int, default=None)
+    ap.add_argument("--instances", default=None,
+                    help="comma-separated instance ids to run (subset)")
+    ap.add_argument("--instances-file", default=None,
+                    help="path to a subset file: tasks/*.json or a newline id list")
+    ap.add_argument("--max-turns", type=int, default=None,
+                    help="override per-task turn cap (else fork default)")
+    ap.add_argument("--max-price", type=float, default=None,
+                    help="override per-task $ cap (else fork default, currently 1.00)")
     ap.add_argument("--run-id", required=True)
     args = ap.parse_args()
+
+    only_ids: list[str] | None = None
+    if args.instances_file:
+        only_ids = read_instance_ids(args.instances_file)
+    if args.instances:
+        cli_ids = [s.strip() for s in args.instances.split(",") if s.strip()]
+        only_ids = (only_ids or []) + cli_ids
 
     fork = get_fork(args.fork)
     out_dir = Path("runs") / args.run_id
@@ -67,7 +122,7 @@ def main() -> None:
     pred_f = (out_dir / "predictions.jsonl").open("w")
     met_f = (out_dir / "metrics.jsonl").open("w")
 
-    instances = load_instances(args.split, args.dataset, args.limit)
+    instances = load_instances(args.split, args.dataset, args.limit, only_ids)
     print(f"[{args.run_id}] fork={fork.name} model={fork.model} "
           f"instances={len(instances)}")
 
@@ -78,7 +133,7 @@ def main() -> None:
             inst["repo"], inst["base_commit"]
         )
         try:
-            run = run_agent(fork, inst, repo_path)
+            run = run_agent(fork, inst, repo_path, args.max_turns, args.max_price)
         except Exception as e:  # keep the batch going; record the failure
             print(f"  [{i}/{len(instances)}] {iid} ERROR: {e}")
             run = None
