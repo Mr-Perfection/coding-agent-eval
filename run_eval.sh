@@ -18,6 +18,8 @@
 #   --max-price P       per-task $ cap (else fork default 1.00)
 #   --max-turns N       per-task turn cap (else fork default 40)
 #   --no-grade          skip grading (grading runs by DEFAULT; needs Docker + swebench)
+#   --cache-level LVL   docker image cache: none|base|env|instance (default: instance)
+#                       'instance' keeps the built repo image so reruns skip the git clone
 #   --compare A B       skip running; just print the A/B table for runs A and B
 set -euo pipefail
 
@@ -33,6 +35,7 @@ LIMIT=""
 MAX_PRICE=""
 MAX_TURNS=""
 GRADE=1   # grade by default; --no-grade to skip (mock is auto-skipped)
+CACHE_LEVEL=instance   # keep instance images: reruns skip the per-instance git clone
 OPEN=0
 
 while [ $# -gt 0 ]; do
@@ -46,11 +49,12 @@ while [ $# -gt 0 ]; do
     --max-turns) MAX_TURNS="$2"; shift 2;;
     --grade)     GRADE=1; shift;;
     --no-grade)  GRADE=0; shift;;
+    --cache-level) CACHE_LEVEL="$2"; shift 2;;
     --compare)   "$PY" -m harness.compare --baseline "$2" --candidate "$3"
                  "$PY" -m harness.report --baseline "$2" --candidate "$3"
                  echo "open: file://$(pwd)/runs/compare_$2_$3.html"; exit 0;;
     --open)      OPEN=1; shift;;
-    -h|--help)   sed -n '2,26p' "$0"; exit 0;;
+    -h|--help)   sed -n '2,23p' "$0"; exit 0;;
     *) echo "Unknown flag: $1"; exit 1;;
   esac
 done
@@ -86,7 +90,7 @@ if [ "$GRADE" -eq 1 ] && [ "$FORK" != "mock" ]; then
   "$PY" -c "import swebench,sys; sys.exit(0 if int(swebench.__version__.split('.')[0])<4 else 1)" 2>/dev/null \
     || uv pip install --python "$PY" 'swebench<4'
   echo "==> Grading (Docker, no model — runs the real test suite) run-id=$RUN_ID"
-  "$PY" -m harness.grade --run-id "$RUN_ID" || echo "WARN: grading failed (is Docker running?)"
+  "$PY" -m harness.grade --run-id "$RUN_ID" --cache-level "$CACHE_LEVEL" || echo "WARN: grading failed (is Docker running?)"
 fi
 
 # Summary.
