@@ -1,0 +1,118 @@
+"""Generate SWE-bench predictions + metrics for one fork.
+
+Writes two files under ``runs/<run-id>/``:
+
+* ``predictions.jsonl`` — the input the official grader consumes. One line per
+  instance: ``{"instance_id", "model_patch", "model_name_or_path"}``.
+* ``metrics.jsonl`` — our richer per-instance telemetry (schema below), later
+  joined with grades by ``compare``.
+
+metrics.jsonl record schema::
+
+    {
+      "instance_id": str,
+      "fork": str,
+      "resolved": null,          # filled in by compare/grade join
+      "wall_clock_s": float,     # agent time only (excludes index build)
+      "index_build_s": float,    # one-time per repo (0 if none)
+      "turns": int | null,
+      "tool_calls": {name: count},
+      "search_calls": int,       # grep/read/glob... -> "flailing" proxy
+      "tokens": {input, output, total},
+      "cost_usd": float | null,
+      "patch_nonempty": bool,
+      "localization": {gold_files, edited_files, precision, recall, f1}
+    }
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+from pathlib import Path
+
+from . import repos
+from .config import get_fork
+from .metrics import localization
+from .vibe_agent import run_agent
+
+SPLITS = {
+    "lite": "princeton-nlp/SWE-bench_Lite",
+    "verified": "princeton-nlp/SWE-bench_Verified",
+    "full": "princeton-nlp/SWE-bench",
+}
+
+
+def load_instances(split: str, dataset: str | None, limit: int | None) -> list[dict]:
+    from datasets import load_dataset  # imported lazily so --help needs no deps
+
+    name = dataset or SPLITS[split]
+    ds = load_dataset(name, split="test")
+    rows = [dict(r) for r in ds]
+    return rows[:limit] if limit else rows
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--fork", required=True, help="baseline | ultra-index | mock")
+    ap.add_argument("--split", default="lite", choices=SPLITS)
+    ap.add_argument("--dataset", default=None, help="override HF dataset name")
+    ap.add_argument("--limit", type=int, default=None)
+    ap.add_argument("--run-id", required=True)
+    args = ap.parse_args()
+
+    fork = get_fork(args.fork)
+    out_dir = Path("runs") / args.run_id
+    out_dir.mkdir(parents=True, exist_ok=True)
+    pred_f = (out_dir / "predictions.jsonl").open("w")
+    met_f = (out_dir / "metrics.jsonl").open("w")
+
+    instances = load_instances(args.split, args.dataset, args.limit)
+    print(f"[{args.run_id}] fork={fork.name} model={fork.model} "
+          f"instances={len(instances)}")
+
+    for i, inst in enumerate(instances, 1):
+        iid = inst["instance_id"]
+        # Mock returns the gold patch directly, so it needs no repo checkout.
+        repo_path = None if fork.backend == "mock" else repos.checkout(
+            inst["repo"], inst["base_commit"]
+        )
+        try:
+            run = run_agent(fork, inst, repo_path)
+        except Exception as e:  # keep the batch going; record the failure
+            print(f"  [{i}/{len(instances)}] {iid} ERROR: {e}")
+            run = None
+
+        patch = run.patch if run else ""
+        pred_f.write(json.dumps({
+            "instance_id": iid,
+            "model_patch": patch,
+            "model_name_or_path": f"vibe-{fork.name}",
+        }) + "\n")
+
+        record = {
+            "instance_id": iid,
+            "fork": fork.name,
+            "resolved": None,
+            "wall_clock_s": run.wall_clock_s if run else None,
+            "index_build_s": run.index_build_s if run else None,
+            "turns": run.turns if run else None,
+            "tool_calls": run.tool_calls if run else {},
+            "search_calls": run.search_calls if run else None,
+            "tokens": run.tokens if run else {},
+            "cost_usd": run.cost_usd if run else None,
+            "patch_nonempty": bool(patch.strip()),
+            "localization": localization(inst.get("patch", ""), patch),
+        }
+        met_f.write(json.dumps(record) + "\n")
+        print(f"  [{i}/{len(instances)}] {iid} "
+              f"turns={record['turns']} search={record['search_calls']} "
+              f"t={record['wall_clock_s']}s loc_f1={record['localization']['f1']}")
+
+    pred_f.close()
+    met_f.close()
+    print(f"Wrote {out_dir}/predictions.jsonl and metrics.jsonl")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"ls -la && echo \\\"---GIT LOG---\\\" && git log --oneline -20 2>/dev/null && echo \\\"---REMOTE---\\\" && git remote -v\",\"description\":\"Inspect local repo contents and git state\"}",
+  "error": "Exit code 128\n---GIT LOG---",
+  "timestamp": "2026-08-22T18:27:39.101Z",
+  "retry_count": 1
+}

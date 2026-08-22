@@ -1,0 +1,101 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1787422938740,
+  "projectRoot": "/Users/stephenlee/Developer/coding-agent-eval",
+  "techStack": {
+    "languages": [],
+    "frameworks": [],
+    "packageManager": null,
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": null,
+    "lintCommand": null,
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [],
+    "gitBranches": null
+  },
+  "customNotes": [],
+  "directoryMap": {},
+  "hotPaths": [
+    {
+      "path": "harness/config.py",
+      "accessCount": 3,
+      "lastAccessed": 1787423716200,
+      "type": "file"
+    },
+    {
+      "path": "README.md",
+      "accessCount": 1,
+      "lastAccessed": 1787423607661,
+      "type": "file"
+    },
+    {
+      "path": "pyproject.toml",
+      "accessCount": 1,
+      "lastAccessed": 1787423610436,
+      "type": "file"
+    },
+    {
+      "path": "harness/__init__.py",
+      "accessCount": 1,
+      "lastAccessed": 1787423615501,
+      "type": "file"
+    },
+    {
+      "path": "harness/repos.py",
+      "accessCount": 1,
+      "lastAccessed": 1787423638499,
+      "type": "file"
+    },
+    {
+      "path": "harness/metrics.py",
+      "accessCount": 1,
+      "lastAccessed": 1787423666462,
+      "type": "file"
+    },
+    {
+      "path": "harness/vibe_agent.py",
+      "accessCount": 1,
+      "lastAccessed": 1787423708126,
+      "type": "file"
+    },
+    {
+      "path": "harness/run_predictions.py",
+      "accessCount": 1,
+      "lastAccessed": 1787423748661,
+      "type": "file"
+    },
+    {
+      "path": "harness/grade.py",
+      "accessCount": 1,
+      "lastAccessed": 1787423756435,
+      "type": "file"
+    },
+    {
+      "path": "harness/compare.py",
+      "accessCount": 1,
+      "lastAccessed": 1787423784289,
+      "type": "file"
+    },
+    {
+      "path": "tests/test_smoke.py",
+      "accessCount": 1,
+      "lastAccessed": 1787423809062,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}

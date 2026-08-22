@@ -1,0 +1,19 @@
+[project]
+name = "coding-agent-eval"
+version = "0.1.0"
+description = "Eval harness measuring the impact of codebase indexing in mistral-vibe on SWE-bench Lite"
+requires-python = ">=3.12"
+dependencies = [
+    "datasets>=2.19",      # load SWE-bench splits from HuggingFace
+    "swebench>=3.0",       # official grading harness (Docker-based)
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["harness"]
