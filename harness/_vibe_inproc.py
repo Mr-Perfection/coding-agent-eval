@@ -4,7 +4,9 @@
 Run this with a *fork's own* python (it imports `vibe`, not our harness package):
 
     venvs/<fork>/bin/python harness/_vibe_inproc.py \
-        --prompt-file F --workdir DIR --max-turns N --max-price P [--agent NAME]
+        --prompt-file F --workdir DIR [--max-turns N] [--max-price P] [--agent NAME]
+
+--max-turns / --max-price are optional; omitted means uncapped.
 
 Why this exists: the plain `vibe --output json` CLI returns only the history array —
 token/cost totals live in in-memory session stats and are never printed or persisted.
@@ -60,7 +62,8 @@ def _terminal():
         return None
 
 
-def build_options(prompt_cwd: str, max_turns: int, max_price: float, agent: str | None):
+def build_options(prompt_cwd: str, max_turns: int | None, max_price: float | None,
+                  agent: str | None):
     from vibe.app_server.local import (
         ClientDescriptor,
         LocalHarnessOptions,
@@ -167,8 +170,9 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--prompt-file")
     ap.add_argument("--workdir", default=".")
-    ap.add_argument("--max-turns", type=int, default=40)
-    ap.add_argument("--max-price", type=float, default=1.0)
+    # Default None = uncapped (vibe skips the limit middleware entirely).
+    ap.add_argument("--max-turns", type=int, default=None)
+    ap.add_argument("--max-price", type=float, default=None)
     ap.add_argument("--agent", default=None)
     ap.add_argument("--check", action="store_true",
                     help="build options only (no model call) and print {'ok':true}")

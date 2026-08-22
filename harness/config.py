@@ -36,9 +36,28 @@ class ForkConfig:
     # to build/refresh the index. Runs with cwd = the checked-out repo.
     # Placeholders: {repo} = repo path, {vibe} = vibe_bin. None = no index step.
     index_build_cmd: str | None = None
-    # Safety rails for headless runs (overridable per run via CLI flags).
-    max_turns: int = 40
-    max_price: float = 1.00
+    # Turn / spend caps for headless runs (overridable per run via CLI flags).
+    # None = uncapped: vibe only installs TurnLimitMiddleware / PriceLimitMiddleware
+    # when the value is not None (core/agent_loop/_loop.py).
+    #
+    # These are sized to NOT bind on a healthy run — they are runaway guards, not
+    # budget knobs. A binding cap censors the very signal an indexing A/B measures:
+    # at max_turns=40 all 3 ladder tasks stopped at the cap, one of them (12589)
+    # having made 22 reads and zero edits, so its "empty patch" measured the cap
+    # rather than the agent. Re-derive these from a calibration run rather than
+    # trusting them blindly; see README.
+    #
+    # Cost is ~99% input tokens (history resent every turn), so spend grows roughly
+    # QUADRATICALLY in turns: ~$0.28/task at 40 turns, ~$1.8 at 100, ~$4 at 150.
+    # 100 is ~2.5x the point where every ladder task was still mid-exploration,
+    # while keeping the 3-task ladder near $5/arm.
+    max_turns: int | None = 100
+    max_price: float | None = 3.00
+    # Wall-clock guard on the agent subprocess, in seconds. This is the real
+    # backstop: a wedged agent burns no tokens, so max_price never fires on it.
+    # On timeout the child is killed and we still harvest the repo's git diff,
+    # so partial edits survive as a patch. None = no timeout (not recommended).
+    timeout_s: int | None = 1800
     # Backend: "inproc" runs _vibe_inproc.py (history + tokens + cost),
     # "cli" runs the raw `vibe` binary (history only, no cost),
     # "mock" runs the synthetic agent (no vibe needed).
