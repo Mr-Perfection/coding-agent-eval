@@ -51,19 +51,32 @@ runs/                # per-run outputs (gitignored): metrics.jsonl + report.html
 
 ## Setup
 
-Two separate venvs by design: each **vibe fork** gets its own venv (so the two
-builds can't interfere), and the **harness** gets its own.
+**Prerequisites:** [`uv`](https://docs.astral.sh/uv/), **Python 3.12**, and — only if you
+want to *grade* — **Docker** running (Docker Desktop on macOS). A vibe login (below) is
+needed only to run the agent for real; the mock backend needs none of this.
+
+**First-time setup after a fresh clone:**
 
 ```bash
-# Harness venv (dataset loader; add 'swebench<4' only when you grade — see below):
+# 1. Harness venv (dataset loader; grading adds 'swebench<4' automatically — see below):
 uv venv .venv --python 3.12
 uv pip install --python .venv/bin/python datasets
 
-# Baseline fork = latest main of upstream vibe, in its own venv:
+# 2. Baseline fork = latest main of upstream vibe, in ITS OWN venv:
 uv venv venvs/baseline --python 3.12
 uv pip install --python venvs/baseline/bin/python "git+https://github.com/mistralai/mistral-vibe"
 # ...later, the ultra-index fork the same way into venvs/ultra-index.
+
+# 3. Log in + pin the model (see "Auth & model pinning" below), then smoke-test the pipeline:
+.venv/bin/python -m harness.run_predictions --fork mock --split lite --limit 5 --run-id smoke
+
+# 4. Real run over the curated 8-task subset (agent + grade + HTML report):
+./run_eval.sh --open
 ```
+
+Two separate venvs by design: each **vibe fork** gets its own venv (so the two
+builds can't interfere), and the **harness** gets its own. `runs/`, `repo_cache/`, and
+`logs/` are gitignored, so a teammate's clone starts clean and regenerates them.
 
 ### Auth & model pinning (important)
 
@@ -97,6 +110,24 @@ uv pip install --python venvs/baseline/bin/python "git+https://github.com/mistra
 # 5. A/B comparison table:
 .venv/bin/python -m harness.compare --baseline base_v1 --candidate idx_v1
 ```
+
+### Grading notes (read before your first grade)
+
+* **Docker must be running.** Grading applies the patch + the repo's real test suite in a
+  container — no model involved, fully deterministic.
+* **First grade per repo is slow, then cached.** `grade.py` builds the swebench eval images
+  **locally from source** (`--namespace ""`): base image → per-repo env image (pip-installs
+  the project's pinned deps) → instance image (a full `git clone` of the target repo). Expect
+  ~10–15 min the first time you touch a repo; subsequent tasks in that repo reuse the images.
+  This local build is required on **Apple Silicon / arm64**, where swebench's default prebuilt
+  Docker Hub images don't exist (they're x86_64-only).
+* **swebench is auto-pinned to `<4`.** `run_eval.sh`/`grade.py` install `swebench<4`; 4.x/5.x
+  switched to a prebuilt-image dataset model that can't grade classic SWE-bench_Lite rows.
+* **If a build hangs at `FROM ubuntu:22.04` with an empty `docker ps`,** it's a flaky Docker
+  Hub connection (swebench's builder blocks instead of erroring). Fix: `docker pull ubuntu:22.04`
+  manually, then re-run the grade — it resumes from cache.
+* Random-named containers (e.g. `upbeat_shannon`) showing *"configured logging driver does not
+  support reading"* are just swebench build steps run with logging disabled — **harmless**.
 
 ## Hackathon subset (recommended)
 
@@ -153,9 +184,14 @@ safer spend, but too low truncates hard "buried" tasks before they finish.
 
 ## Status
 
-* Runner + metrics + mock backend wired; 5 smoke tests pass (`python tests/test_smoke.py`).
+* Runner + metrics + mock backend wired; 8 smoke tests pass (`python tests/test_smoke.py`).
 * Baseline vibe integration verified against **vibe 2.24.3** (real CLI flags + the
   `--output json` history-array schema; parser tested against that shape).
-* Pending: source token/cost from the session log; grade a real run (Docker); install
-  the `ultra-index` fork once ready
-  ([andred1729/mistral-vibe-ultra-index](https://github.com/andred1729/mistral-vibe-ultra-index)).
+* **Cost/tokens capture validated** on a real run (inproc backend via `vibe.utils.pricing`).
+* **Grading validated end-to-end** (swebench 3.x, local image build). First graded task
+  `django__django-12113`: baseline vibe **unresolved** — it edited the wrong file
+  (`tests/test_sqlite.py` instead of the gold `.../sqlite3/creation.py`), and `Loc F1 = 0`
+  predicted the miss before grading. A good task to show the index earning its keep.
+* Pending: install the `ultra-index` fork once ready
+  ([andred1729/mistral-vibe-ultra-index](https://github.com/andred1729/mistral-vibe-ultra-index))
+  and run the A/B.

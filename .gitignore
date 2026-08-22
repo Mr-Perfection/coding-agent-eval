@@ -9,3 +9,5 @@ repo_cache/
 .pytest_cache/
 logs/
 .omc
+# swebench writes its grade report to the repo root as <model>.<run-id>.json
+/vibe-*.json
