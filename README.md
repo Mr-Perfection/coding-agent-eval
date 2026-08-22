@@ -80,13 +80,69 @@ builds can't interfere), and the **harness** gets its own. `runs/`, `repo_cache/
 
 ### Auth & model pinning (important)
 
-* **Auth:** vibe uses a cached browser login (console.mistral.ai) *or* a
-  `MISTRAL_API_KEY` env var / `~/.vibe/.env`. Run `venvs/baseline/bin/vibe --setup`
-  once if not already logged in.
-* **Model:** vibe has **no `--model` flag**. Pin the model in `~/.vibe/config.toml`
-  with `active_model = "<alias>"` (the alias must exist under `[models]`). Set the
-  **same** model before running both forks so the delta reflects the index, not the
-  model.
+**Two separate billing paths.** vibe's built-in default model is
+`mistral-vibe-cli-latest`, which is metered against the **Vibe CLI subscription**,
+*not* La Plateforme API credit. When that subscription quota is spent, every call
+fails with `402 Payment Required` and the run produces empty patches in ~4s.
+
+The alias makes this easy to miss: `mistral-vibe-cli-latest` carries the alias
+`mistral-medium-3.5`, so the harness banner printed `model=mistral-medium-3.5`
+while the wire model was the subscription one.
+
+**To bill against API credit instead**, `~/.vibe/config.toml` pins our own alias
+whose `name` is a plain API model:
+
+```toml
+active_model = "mistral-medium-api"
+
+[[models]]
+name = "mistral-medium-latest"   # plain API model, billed to API credit
+provider = "mistral"             # -> https://api.mistral.ai/v1
+alias = "mistral-medium-api"
+temperature = 1.0
+input_price = 1.5                # same Medium 3.5 list price ($1.50/$7.50 per M)
+output_price = 7.5
+cached_input_price = 0.15
+thinking = "high"
+supports_images = true
+```
+
+Note that a user-level `[[models]]` block **replaces** vibe's default model list
+rather than adding to it. That is deliberate here: it makes the
+subscription-metered model unselectable, so no fallback path can quietly bill it.
+
+* **Auth:** the provider resolves its key as `$MISTRAL_API_KEY` **first**, then the
+  macOS keychain (`ai.mistral.vibe` / `MISTRAL_API_KEY`). A browser login
+  (`vibe --setup`) writes the *subscription* key to the keychain — so to use an API
+  key without disturbing that login, put it in `~/.vibe/.env`, which wins:
+
+  ```bash
+  echo 'MISTRAL_API_KEY=<your-la-plateforme-key>' >> ~/.vibe/.env
+  chmod 600 ~/.vibe/.env
+  ```
+
+  Verify the key reaches a billable model before spending anything:
+
+  ```bash
+  curl -s -H "Authorization: Bearer $(grep MISTRAL_API_KEY ~/.vibe/.env | cut -d= -f2-)" \
+    https://api.mistral.ai/v1/models | head -c 300
+  ```
+
+  A `{"detail": "Check your subscription ..."}` response means the key is the
+  subscription one, not an API key.
+
+* **Model:** vibe has **no `--model` flag** — pinning happens only in
+  `~/.vibe/config.toml`. Set the **same** alias before running both forks so the
+  delta reflects the index, not the model.
+
+* **Preflight:** `run_eval.sh` now resolves the active model through vibe's own
+  config layers and aborts before any spend if nothing is pinned, if the pin
+  disagrees with `harness.config.PINNED_MODEL`, if the wire model is
+  subscription-metered, or if no API key is resolvable. Run it standalone with:
+
+  ```bash
+  venvs/baseline/bin/python harness/preflight.py mistral-medium-api
+  ```
 
 ## Quickstart
 

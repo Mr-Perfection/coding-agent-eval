@@ -66,9 +66,14 @@ if [ "$FORK" != "mock" ]; then
   VBIN="venvs/${FORK}/bin/vibe"
   [ -x "$VBIN" ] || { echo "ERROR: $VBIN not found. Install the fork:"; \
     echo "  uv venv venvs/${FORK} --python 3.12 && uv pip install --python venvs/${FORK}/bin/python 'git+https://github.com/mistralai/mistral-vibe'"; exit 1; }
-  if ! grep -q 'active_model' "$HOME/.vibe/config.toml" 2>/dev/null; then
-    echo "WARN: no 'active_model' pinned in ~/.vibe/config.toml — vibe will use its default model."
-    echo "      Pin the SAME model before running both forks for a fair A/B."
+  # Resolve what vibe will ACTUALLY send, and check auth, before spending anything.
+  # (The old `grep -q active_model` check passed on `active_model = ""`, which is
+  # vibe's "unpinned" sentinel -> the subscription-metered default model -> 402.)
+  PINNED="$("$PY" -c 'from harness.config import PINNED_MODEL; print(PINNED_MODEL)')"
+  echo "==> Preflight (fork=$FORK)"
+  if ! "venvs/${FORK}/bin/python" harness/preflight.py "$PINNED"; then
+    echo "Aborting before any API spend. See README 'Auth & model pinning'." >&2
+    exit 1
   fi
 fi
 
