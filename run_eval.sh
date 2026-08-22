@@ -83,7 +83,7 @@ else ARGS+=(--instances-file "$SUBSET"); fi
 echo "==> Running: fork=$FORK run-id=$RUN_ID"
 "$PY" -m harness.run_predictions "${ARGS[@]}"
 
-# Grading (Docker + swebench) — default on; skipped for the mock fork.
+# Grading (Docker + swebench) - default on; skipped for the mock fork.
 if [ "$GRADE" -eq 1 ] && [ "$FORK" != "mock" ]; then
   # Pin swebench<4: 4.x/5.x switched to a registry-image model that needs an
   # `image` field the classic SWE-bench_Lite rows don't carry. 3.x builds from source.
