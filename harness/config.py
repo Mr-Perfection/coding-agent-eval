@@ -15,9 +15,20 @@ from pathlib import Path
 
 # Pin BOTH real forks to the same model so deltas reflect the index, not the model.
 # vibe has NO --model CLI flag: pin it in ~/.vibe/config.toml via `active_model`
-# (must match a key under [models]). This constant is recorded in metrics for
+# (must match an alias under [[models]]). This constant is recorded in metrics for
 # traceability but is not passed on the command line.
-PINNED_MODEL = "mistral-medium-3.5"
+#
+# BILLING: vibe's built-in default model is `mistral-vibe-cli-latest`, which
+# carries the alias "mistral-medium-3.5" and is metered against the Vibe CLI
+# *subscription*, not La Plateforme API credit. Once that subscription quota is
+# spent every call returns HTTP 402 Payment Required. The alias made this easy to
+# miss: the banner read "model=mistral-medium-3.5" while the wire model was
+# `mistral-vibe-cli-latest`.
+#
+# We therefore pin our own alias, defined in ~/.vibe/config.toml, whose `name` is
+# the plain API model `mistral-medium-latest` (same Medium 3.5 weights, same list
+# price of $1.50/$7.50 per M tokens, billed against API credit).
+PINNED_MODEL = "mistral-medium-api"
 
 
 @dataclass(frozen=True)
