@@ -1,0 +1,16 @@
+{
+  "name": "difficulty-ladder-v1",
+  "split": "lite",
+  "rationale": "Three django tasks of INCREASING localization difficulty, chosen so the indexing feature's benefit should grow monotonically down the ladder. All are django v3.1, so they REUSE the already-built swebench env image (sweb.env.py.arm64.a18371b03f...) and the cached repo_cache/django__django clone — minimal network, which matters on a slow connection. Difficulty is judged by how findable the target file is FROM THE ISSUE TEXT (the axis a semantic index improves), not just fix size. Labels confirmed against the dataset (fix lines, FAIL_TO_PASS/PASS_TO_PASS, issue length). See https://huggingface.co/datasets/princeton-nlp/SWE-bench_Lite/viewer/default/test",
+  "buckets": {
+    "easy": "Issue names a shallow, well-known area; target file directly implied. Baseline should plausibly resolve. Index gives marginal search-turn savings.",
+    "medium": "Symptom is one non-obvious hop from the fix; agent must trace it into an internal (but known) ORM file. Index should cut the tracing round-trips.",
+    "hard": "Long/vague issue, fix buried deep in a huge central file. Index should help most — fewer search turns and possibly a resolution flip."
+  },
+  "note_on_12113": "django-12113 (our first graded task) LOOKED localized (10-line fix) but baseline still FAILED it by editing a test file (tests/test_sqlite.py) instead of the gold sqlite3/creation.py. Its target is obscure test-DB plumbing. django-12308 replaces it as the 'easy' rung because its issue->file mapping is far more direct.",
+  "tasks": [
+    {"instance_id": "django__django-12308", "repo": "django/django", "bucket": "easy",   "version": "3.1", "target_file": "django/contrib/admin/utils.py",     "fix_lines": 5,  "fail_to_pass": 2, "pass_to_pass": 20, "why": "Readonly JSONField shows as dict in admin. Named, shallow area -> admin/utils.py display_for_field is easy to localize."},
+    {"instance_id": "django__django-12470", "repo": "django/django", "bucket": "medium", "version": "3.1", "target_file": "django/db/models/sql/compiler.py",   "fix_lines": 6,  "fail_to_pass": 1, "pass_to_pass": 33, "why": "Inherited model won't order by Parent.Meta '-pk'. Must trace an ordering symptom into the SQL compiler -- one non-obvious hop."},
+    {"instance_id": "django__django-12589", "repo": "django/django", "bucket": "hard",   "version": "3.1", "target_file": "django/db/models/sql/query.py",      "fix_lines": 15, "fail_to_pass": 1, "pass_to_pass": 66, "why": "GROUP BY error with tricky M2M-through annotation. Long vague issue; fix buried in query.py (Django's biggest ORM file), high regression blast radius."}
+  ]
+}

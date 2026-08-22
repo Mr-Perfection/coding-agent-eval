@@ -92,18 +92,19 @@ fi
 # Summary.
 echo
 echo "==> Summary  runs/$RUN_ID/metrics.jsonl"
-"$PY" - "$RUN_ID" <<'PY'
+"$PY" - "$RUN_ID" "$SUBSET" <<'PY'
 import json, sys
 from pathlib import Path
 from harness.metrics import aggregate
 from harness.compare import load_resolved, apply_grades
 rid = sys.argv[1]
+subset_path = sys.argv[2] if len(sys.argv) > 2 else "tasks/indexing_subset.json"
 recs = [json.loads(l) for l in (Path("runs")/rid/"metrics.jsonl").read_text().splitlines() if l.strip()]
 apply_grades(recs, load_resolved(rid))  # merge swebench verdict (if graded) at read-time
 print(f"  {'instance':34s} {'bucket':9s} loc_f1 turns search  cost      time")
 # bucket lookup from the curated subset, if present
 buckets = {}
-sub = Path("tasks/indexing_subset.json")
+sub = Path(subset_path)
 if sub.exists():
     for t in json.loads(sub.read_text()).get("tasks", []):
         buckets[t["instance_id"]] = t.get("bucket", "")
