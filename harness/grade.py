@@ -31,6 +31,13 @@ def main() -> None:
     # works on any arch and is cached after the first run. Pass --namespace swebench
     # to pull instead (faster on x86_64 if the images exist).
     ap.add_argument("--namespace", default="")
+    # Instance images carry the `git clone` of the target repo (setup_repo.sh runs at
+    # instance-image build time). swebench's default cache level, "env", deletes them
+    # after every run, so each run re-clones django/sympy/... from GitHub — ~10 min
+    # per instance on a cold cache. "instance" keeps them, making that a one-time cost.
+    # Costs disk: one image per instance id on top of the shared env image.
+    ap.add_argument("--cache-level", default="instance",
+                    choices=["none", "base", "env", "instance"])
     args = ap.parse_args()
 
     preds = Path("runs") / args.run_id / "predictions.jsonl"
@@ -44,6 +51,7 @@ def main() -> None:
         "--max_workers", str(args.max_workers),
         "--run_id", args.run_id,
         "--namespace", args.namespace,
+        "--cache_level", args.cache_level,
     ]
     print("Grading (Docker):", " ".join(cmd))
     subprocess.run(cmd, check=True)
