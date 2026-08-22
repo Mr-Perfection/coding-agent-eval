@@ -2,7 +2,7 @@
 # run_eval.sh — one entry point for the mistral-vibe indexing eval.
 #
 # Examples:
-#   ./run_eval.sh                              # baseline over the curated 8-task subset
+#   ./run_eval.sh                              # baseline over the 3-task difficulty ladder
 #   ./run_eval.sh --fork mock                  # free pipeline check (no API calls)
 #   ./run_eval.sh --fork baseline --max-price 0.50
 #   ./run_eval.sh --fork ultra-index --run-id idx_v1
@@ -12,7 +12,7 @@
 # Flags:
 #   --fork NAME         baseline | ultra-index | mock         (default: baseline)
 #   --run-id ID         output dir runs/ID          (default: <fork>_<timestamp>)
-#   --subset FILE       task subset file            (default: tasks/indexing_subset.json)
+#   --subset FILE       task subset file            (default: tasks/difficulty_ladder.json)
 #   --instances A,B     ad-hoc instance ids (overrides --subset)
 #   --limit N           cap number of tasks
 #   --max-price P       per-task $ cap (else fork default 1.00)
@@ -27,7 +27,7 @@ PY=.venv/bin/python
 
 FORK=baseline
 RUN_ID=""
-SUBSET="tasks/indexing_subset.json"
+SUBSET="tasks/difficulty_ladder.json"
 INSTANCES=""
 LIMIT=""
 MAX_PRICE=""
@@ -98,7 +98,7 @@ from pathlib import Path
 from harness.metrics import aggregate
 from harness.compare import load_resolved, apply_grades
 rid = sys.argv[1]
-subset_path = sys.argv[2] if len(sys.argv) > 2 else "tasks/indexing_subset.json"
+subset_path = sys.argv[2] if len(sys.argv) > 2 else "tasks/difficulty_ladder.json"
 recs = [json.loads(l) for l in (Path("runs")/rid/"metrics.jsonl").read_text().splitlines() if l.strip()]
 apply_grades(recs, load_resolved(rid))  # merge swebench verdict (if graded) at read-time
 print(f"  {'instance':34s} {'bucket':9s} loc_f1 turns search  cost      time")
